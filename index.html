@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>아이폰 센서 및 GPS 데이터</title>
+    <title>아이폰 센서 및 실시간 GPS 데이터</title>
     <style>
         /* 여기는 웹 페이지를 예쁘게 꾸미는 CSS 코드 넣는 곳이야 */
         body {
@@ -37,7 +37,7 @@
     </style>
 </head>
 <body>
-    <h1>아이폰 센서 및 GPS 데이터 확인</h1>
+    <h1>아이폰 센서 및 실시간 GPS 데이터 확인</h1>
     <p>아래 버튼을 눌러 센서 및 위치 접근 권한을 허용해주세요.</p>
     <button id="requestPermissionButton">권한 요청</button>
 
@@ -47,12 +47,13 @@
     <h2>움직임 (DeviceMotion)</h2>
     <pre id="motion-data">데이터 로딩 중...</pre>
 
-    <h2>GPS 위치 정보</h2>
+    <h2>실시간 GPS 위치 정보</h2>
     <pre id="gps-data">위치 정보 대기 중...</pre>
 
     <script>
         // 권한 요청 버튼 요소 가져오기
         const requestPermissionButton = document.getElementById('requestPermissionButton');
+        let watchId; // watchPosition의 ID를 저장할 변수 (나중에 위치 추적 중지할 때 사용)
 
         // 센서 데이터 처리 함수: 기울기 (DeviceOrientation)
         function handleOrientation(event) {
@@ -87,16 +88,18 @@
             `;
         }
 
-        // GPS 위치 정보 성공 콜백 함수
+        // GPS 위치 정보 성공 콜백 함수 (실시간 업데이트)
         function handleGeolocationSuccess(position) {
             const latitude = position.coords.latitude;
             const longitude = position.coords.longitude;
             const accuracy = position.coords.accuracy; // 미터 단위 정확도
+            const timestamp = new Date(position.timestamp).toLocaleTimeString(); // 시간 정보
 
             document.getElementById('gps-data').innerText = `
                 위도: ${latitude.toFixed(6)}
                 경도: ${longitude.toFixed(6)}
                 정확도: ${accuracy.toFixed(2)} m
+                업데이트 시간: ${timestamp}
             `;
         }
 
@@ -118,6 +121,11 @@
                     break;
             }
             document.getElementById('gps-data').innerText = errorMessage;
+            // 에러 발생 시 실시간 추적 중지 (선택 사항)
+            if (watchId) {
+                navigator.geolocation.clearWatch(watchId);
+                watchId = null;
+            }
         }
 
         // "권한 요청" 버튼 클릭 이벤트 리스너
@@ -141,20 +149,28 @@
                 requestPermissionButton.style.display = 'none'; // 버튼 숨기기
             }
 
-            // 2. GPS 위치 정보 요청
+            // 2. 실시간 GPS 위치 정보 요청
             if (navigator.geolocation) { // 브라우저가 Geolocation을 지원하는지 확인
                 document.getElementById('gps-data').innerText = '위치 정보 요청 중...';
-                navigator.geolocation.getCurrentPosition(
+                // watchPosition을 사용하여 실시간으로 위치 추적
+                watchId = navigator.geolocation.watchPosition(
                     handleGeolocationSuccess,
                     handleGeolocationError,
                     {
                         enableHighAccuracy: true, // 더 정확한 위치 요청 (GPS 사용 가능)
-                        timeout: 10000,           // 10초 안에 응답 없으면 타임아웃
+                        timeout: 5000,            // 각 위치 업데이트에 대한 최대 대기 시간
                         maximumAge: 0             // 캐시된 위치 사용 안 함 (항상 최신 위치)
                     }
                 );
             } else {
                 document.getElementById('gps-data').innerText = '이 브라우저는 Geolocation을 지원하지 않습니다.';
+            }
+        });
+
+        // 페이지를 떠날 때 위치 추적 중지 (선택 사항, 배터리 절약)
+        window.addEventListener('beforeunload', function() {
+            if (watchId) {
+                navigator.geolocation.clearWatch(watchId);
             }
         });
     </script>
