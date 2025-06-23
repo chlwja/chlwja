@@ -191,19 +191,27 @@
         // Leaflet Map 초기화 함수
         function initMap(initialLatLng) {
             updateDebugStatus('initMap 함수 시작. 초기 위치: ' + initialLatLng[0].toFixed(4) + ', ' + initialLatLng[1].toFixed(4));
-            // 지도 객체 생성
-            map = L.map('map').setView(initialLatLng, 18); // 'map' div에 지도 생성, 초기 위치와 줌 레벨 설정
-            updateDebugStatus('L.map() 호출됨. 지도 객체 생성 완료.');
+            
+            // L 객체가 정의되었는지 확인하는 디버그 메시지 추가
+            updateDebugStatus('Leaflet (L) 객체 확인: ' + (typeof L !== 'undefined' ? '정의됨' : '정의되지 않음!'));
 
-            // OpenStreetMap 타일 레이어 추가 (무료 지도 타일)
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            }).addTo(map);
-            updateDebugStatus('L.tileLayer() 호출됨. 타일 레이어 추가됨. 지도가 보여야 함!'); // 중요 메시지
+            try {
+                // 지도 객체 생성
+                map = L.map('map').setView(initialLatLng, 18); // 'map' div에 지도 생성, 초기 위치와 줌 레벨 설정
+                updateDebugStatus('L.map() 호출됨. 지도 객체 생성 완료.');
 
-            // 경로를 그릴 선 객체 생성
-            polyline = L.polyline(path, {color: 'red', weight: 4}).addTo(map);
-            updateDebugStatus('L.polyline() 호출됨. 경로 선 추가됨.');
+                // OpenStreetMap 타일 레이어 추가 (무료 지도 타일)
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                }).addTo(map);
+                updateDebugStatus('L.tileLayer() 호출됨. 타일 레이어 추가됨. 지도가 보여야 함!'); // 중요 메시지
+
+                // 경로를 그릴 선 객체 생성
+                polyline = L.polyline(path, {color: 'red', weight: 4}).addTo(map);
+                updateDebugStatus('L.polyline() 호출됨. 경로 선 추가됨.');
+            } catch (e) {
+                updateDebugStatus('지도 초기화 중 치명적인 에러 발생: ' + e.message); // 에러 메시지 출력
+            }
         }
 
         // "권한 요청" 버튼 클릭 이벤트 리스너
@@ -248,18 +256,4 @@
                     }
                 );
             } else {
-                document.getElementById('gps-data').innerText = '이 브라우저는 Geolocation을 지원하지 않습니다.';
-                updateDebugStatus('이 브라우저는 Geolocation을 지원하지 않습니다.');
-            }
-        });
-
-        // 페이지를 떠날 때 위치 추적 중지
-        window.addEventListener('beforeunload', function() {
-            if (watchId) {
-                navigator.geolocation.clearWatch(watchId);
-                updateDebugStatus('페이지 종료: GPS 추적 중지됨.');
-            }
-        });
-    </script>
-</body>
-</html>
+                document.getElementById
