@@ -177,22 +177,21 @@
 
             // 경로에 새 위치 추가
             path.push(newLatLng);
-            updateDebugStatus('경로 배열에 새 위치 추가됨. 현재 경로 점 개수: ' + path.length); // <-- 이 부분 추가
+            updateDebugStatus('경로 배열에 새 위치 추가됨. 현재 경로 점 개수: ' + path.length);
 
-            // --- 임시 마커 추가 (디버깅용) ---
-            // 기존 마커가 있다면 제거
+            // --- 현재 위치 마커 추가/업데이트 ---
             if (currentLocationMarker) {
-                map.removeLayer(currentLocationMarker);
+                currentLocationMarker.setLatLng(newLatLng); // 마커 위치 업데이트
+            } else {
+                currentLocationMarker = L.circleMarker(newLatLng, {
+                    radius: 8,
+                    color: 'blue',
+                    fillColor: '#3388ff',
+                    fillOpacity: 0.8
+                }).addTo(map);
             }
-            // 현재 위치에 파란색 원형 마커 추가
-            currentLocationMarker = L.circleMarker(newLatLng, {
-                radius: 8,
-                color: 'blue',
-                fillColor: '#3388ff',
-                fillOpacity: 0.8
-            }).addTo(map);
-            updateDebugStatus('현재 위치에 파란색 마커 추가됨.');
-            // --- 임시 마커 추가 끝 ---
+            updateDebugStatus('현재 위치 마커 업데이트됨.');
+            // --- 현재 위치 마커 추가/업데이트 끝 ---
 
             if (polyline) { // polyline이 정의되었는지 확인
                 polyline.setLatLngs(path); // 경로 선 업데이트
@@ -240,10 +239,19 @@
                 updateDebugStatus('L.map() 호출됨. 지도 객체 생성 완료.');
 
                 // OpenStreetMap 타일 레이어 추가 (무료 지도 타일)
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                const tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                 }).addTo(map);
                 updateDebugStatus('L.tileLayer() 호출됨. 타일 레이어 추가됨. 지도가 보여야 함!'); // 중요 메시지
+
+                // 타일 로드 성공/실패 이벤트 리스너 추가
+                tileLayer.on('load', function() {
+                    updateDebugStatus('지도 타일 로드 성공!');
+                });
+                tileLayer.on('tileerror', function(error) {
+                    updateDebugStatus('지도 타일 로드 에러 발생: ' + error.message + ' URL: ' + error.tile.src);
+                });
+
 
                 // 경로를 그릴 선 객체 생성
                 polyline = L.polyline(path, {color: 'red', weight: 4}).addTo(map);
