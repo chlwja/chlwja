@@ -38,13 +38,15 @@
         button:hover {
             background-color: #218838;
         }
-        /* 지도 스타일 추가 */
+        /* 지도 스타일 추가 - 네모칸 넘어서 보이는 문제 해결 */
         #map {
             height: 400px; /* 지도의 높이 설정 */
             width: 100%;  /* 지도의 너비 설정 */
             margin-top: 20px;
             border: 1px solid #ccc;
             border-radius: 5px;
+            box-sizing: border-box; /* 패딩과 보더가 너비/높이에 포함되도록 */
+            overflow: hidden;      /* 내용이 넘치면 숨김 처리 */
         }
         /* 디버그 메시지 스타일 */
         #debug-status {
@@ -82,6 +84,20 @@
 
     <!-- Leaflet JavaScript (integrity, crossorigin 속성 제거됨) -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- L 객체 즉시 확인용 스크립트 -->
+    <script>
+        // 이 스크립트가 실행될 때 L 객체가 정의되어 있는지 즉시 확인
+        // updateDebugStatus 함수가 아직 정의되지 않았을 수 있으므로 직접 DOM 조작
+        const debugElement = document.getElementById('debug-status');
+        const now = new Date();
+        const timestamp = now.toLocaleTimeString();
+        if (typeof L !== 'undefined') {
+            debugElement.innerHTML += `[${timestamp}] Leaflet (L) 객체: 스크립트 로드 직후 정의됨! (매우 중요)<br>`;
+        } else {
+            debugElement.innerHTML += `[${timestamp}] Leaflet (L) 객체: 스크립트 로드 직후 정의되지 않음! (문제 심각)<br>`;
+        }
+    </script>
 
     <script>
         // 권한 요청 버튼 요소 가져오기
@@ -197,8 +213,8 @@
         function initMap(initialLatLng) {
             updateDebugStatus('initMap 함수 시작. 초기 위치: ' + initialLatLng[0].toFixed(4) + ', ' + initialLatLng[1].toFixed(4));
             
-            // L 객체가 정의되었는지 확인하는 디버그 메시지 추가
-            updateDebugStatus('Leaflet (L) 객체 확인: ' + (typeof L !== 'undefined' ? '정의됨' : '정의되지 않음!'));
+            // L 객체가 정의되었는지 확인하는 디버그 메시지 추가 (이전 스크립트에서 이미 확인했지만, 다시 한번)
+            updateDebugStatus('Leaflet (L) 객체 (initMap 내부) 확인: ' + (typeof L !== 'undefined' ? '정의됨' : '정의되지 않음!'));
 
             try {
                 // 지도 객체 생성
