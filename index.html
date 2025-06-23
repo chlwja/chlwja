@@ -46,6 +46,16 @@
             border: 1px solid #ccc;
             border-radius: 5px;
         }
+        /* 디버그 메시지 스타일 */
+        #debug-status {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #fff3cd; /* 경고색 배경 */
+            border: 1px solid #ffeeba;
+            color: #856404;
+            border-radius: 5px;
+            font-size: 0.9em;
+        }
     </style>
 </head>
 <body>
@@ -65,6 +75,8 @@
     <h2>이동 경로</h2>
     <div id="map"></div> <!-- 지도가 표시될 영역 -->
 
+    <p id="debug-status">디버그 메시지: 초기화 중...</p> <!-- 디버그 메시지 표시 영역 -->
+
     <!-- Leaflet JavaScript -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
      integrity="sha256-20nQCchB9co0qIjJZRGuk2/4K9+sckgEOseNvcU8Evg="
@@ -79,6 +91,11 @@
         let map;
         let path = []; // 이동 경로를 저장할 배열 (Leaflet은 [lat, lng] 배열 사용)
         let polyline; // 지도에 그려질 경로 선 객체
+
+        // 디버그 메시지 표시 함수
+        function updateDebugStatus(message) {
+            document.getElementById('debug-status').innerText = '디버그 메시지: ' + message;
+        }
 
         // 센서 데이터 처리 함수: 기울기 (DeviceOrientation)
         function handleOrientation(event) {
@@ -126,22 +143,24 @@
             // 지도에 현재 위치 표시 및 경로 업데이트
             const newLatLng = [latitude, longitude]; // Leaflet은 [lat, lng] 배열 사용
 
-            // --- 디버깅용 로그 추가 ---
-            console.log('handleGeolocationSuccess 호출됨. 새 위치:', newLatLng);
+            updateDebugStatus('GPS 데이터 수신. 위도: ' + latitude.toFixed(4) + ', 경도: ' + longitude.toFixed(4));
 
             if (!map) { // 지도가 아직 초기화되지 않았다면 초기화
-                console.log('지도가 아직 초기화되지 않음. initMap 호출.');
+                updateDebugStatus('지도가 아직 초기화되지 않음. initMap 호출 시도.');
                 initMap(newLatLng);
             } else {
-                console.log('지도 이미 초기화됨. 중심 이동.');
+                updateDebugStatus('지도 이미 초기화됨. 중심 이동 및 경로 업데이트.');
                 map.setView(newLatLng, map.getZoom()); // 지도의 중심을 현재 위치로 이동 (줌 레벨 유지)
             }
 
             // 경로에 새 위치 추가
             path.push(newLatLng);
-            console.log('경로 배열 업데이트됨:', path);
-            polyline.setLatLngs(path); // 경로 선 업데이트
-            console.log('경로 선 업데이트됨.');
+            if (polyline) { // polyline이 정의되었는지 확인
+                polyline.setLatLngs(path); // 경로 선 업데이트
+                updateDebugStatus('경로 선 업데이트됨. 현재 경로 점 개수: ' + path.length);
+            } else {
+                updateDebugStatus('경로 선(polyline)이 아직 정의되지 않음.');
+            }
         }
 
         // GPS 위치 정보 실패 콜백 함수
@@ -162,7 +181,7 @@
                     break;
             }
             document.getElementById('gps-data').innerText = errorMessage;
-            console.error('GPS 에러 발생:', error.code, errorMessage); // 에러 로그 추가
+            updateDebugStatus('GPS 에러 발생: ' + errorMessage); // 디버그 메시지 추가
             if (watchId) {
                 navigator.geolocation.clearWatch(watchId);
                 watchId = null;
@@ -171,24 +190,25 @@
 
         // Leaflet Map 초기화 함수
         function initMap(initialLatLng) {
-            console.log('initMap 함수 시작. 초기 위치:', initialLatLng); // initMap 호출 확인
+            updateDebugStatus('initMap 함수 시작. 초기 위치: ' + initialLatLng[0].toFixed(4) + ', ' + initialLatLng[1].toFixed(4));
             // 지도 객체 생성
             map = L.map('map').setView(initialLatLng, 18); // 'map' div에 지도 생성, 초기 위치와 줌 레벨 설정
-            console.log('L.map() 호출됨. map 객체:', map); // map 객체 생성 확인
+            updateDebugStatus('L.map() 호출됨. 지도 객체 생성 완료.');
 
             // OpenStreetMap 타일 레이어 추가 (무료 지도 타일)
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             }).addTo(map);
-            console.log('L.tileLayer() 호출됨. 타일 레이어 추가됨.'); // 타일 레이어 추가 확인
+            updateDebugStatus('L.tileLayer() 호출됨. 타일 레이어 추가됨. 지도가 보여야 함!'); // 중요 메시지
 
             // 경로를 그릴 선 객체 생성
             polyline = L.polyline(path, {color: 'red', weight: 4}).addTo(map);
-            console.log('L.polyline() 호출됨. 경로 선 추가됨.'); // 경로 선 추가 확인
+            updateDebugStatus('L.polyline() 호출됨. 경로 선 추가됨.');
         }
 
         // "권한 요청" 버튼 클릭 이벤트 리스너
         requestPermissionButton.addEventListener('click', function() {
+            updateDebugStatus('권한 요청 버튼 클릭됨.');
             // 1. IMU 센서 권한 요청
             if (typeof DeviceOrientationEvent.requestPermission === 'function') {
                 DeviceOrientationEvent.requestPermission()
@@ -197,20 +217,27 @@
                             window.addEventListener('deviceorientation', handleOrientation);
                             window.addEventListener('devicemotion', handleMotion);
                             requestPermissionButton.style.display = 'none';
+                            updateDebugStatus('IMU 센서 권한 허용됨.');
                         } else {
                             alert('센서 접근 권한이 거부되었습니다. 센서 데이터를 표시할 수 없습니다.');
+                            updateDebugStatus('IMU 센서 권한 거부됨.');
                         }
                     })
-                    .catch(console.error);
+                    .catch(error => {
+                        console.error(error);
+                        updateDebugStatus('IMU 센서 권한 요청 중 에러: ' + error.message);
+                    });
             } else {
                 window.addEventListener('deviceorientation', handleOrientation);
                 window.addEventListener('devicemotion', handleMotion);
                 requestPermissionButton.style.display = 'none';
+                updateDebugStatus('IMU 센서 권한 요청 불필요 (구형 iOS 또는 다른 브라우저).');
             }
 
             // 2. 실시간 GPS 위치 정보 요청
             if (navigator.geolocation) { // 브라우저가 Geolocation을 지원하는지 확인
                 document.getElementById('gps-data').innerText = '위치 정보 요청 중...';
+                updateDebugStatus('GPS 위치 정보 요청 시작.');
                 watchId = navigator.geolocation.watchPosition(
                     handleGeolocationSuccess,
                     handleGeolocationError,
@@ -222,6 +249,7 @@
                 );
             } else {
                 document.getElementById('gps-data').innerText = '이 브라우저는 Geolocation을 지원하지 않습니다.';
+                updateDebugStatus('이 브라우저는 Geolocation을 지원하지 않습니다.');
             }
         });
 
@@ -229,6 +257,7 @@
         window.addEventListener('beforeunload', function() {
             if (watchId) {
                 navigator.geolocation.clearWatch(watchId);
+                updateDebugStatus('페이지 종료: GPS 추적 중지됨.');
             }
         });
     </script>
