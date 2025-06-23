@@ -256,4 +256,18 @@
                     }
                 );
             } else {
-                document.getElementById
+                document.getElementById('gps-data').innerText = '이 브라우저는 Geolocation을 지원하지 않습니다.';
+                updateDebugStatus('이 브라우저는 Geolocation을 지원하지 않습니다.');
+            }
+        });
+
+        // 페이지를 떠날 때 위치 추적 중지
+        window.addEventListener('beforeunload', function() {
+            if (watchId) {
+                navigator.geolocation.clearWatch(watchId);
+                updateDebugStatus('페이지 종료: GPS 추적 중지됨.');
+            }
+        });
+    </script>
+</body>
+</html>
