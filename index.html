@@ -1,105 +1,112 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>아이폰 센서 데이터</title>
-    <style>
-        /* 여기는 웹 페이지를 예쁘게 꾸미는 CSS 코드 넣는 곳이야 */
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-            background-color: #f0f0f0;
-            color: #333;
+// 기존 센서 코드 아래에 추가
+let ws; // 웹소켓 객체
+
+// 웹소켓 연결 함수
+function connectWebSocket() {
+    // 여기에 네가 만들 서버의 주소를 넣어줘! (예: ws://your-server-ip:3000)
+    // 로컬에서 테스트할 때는 ws://컴퓨터IP주소:포트번호
+    // 배포된 서버라면 ws://서버주소:포트번호
+    ws = new WebSocket('ws://localhost:3000'); // 일단 로컬 테스트용으로 3000번 포트 사용
+
+    ws.onopen = function(event) {
+        console.log('웹소켓 연결 성공!');
+        // 연결 성공하면 센서 데이터 전송 시작
+        startSendingSensorData();
+    };
+
+    ws.onmessage = function(event) {
+        // 서버로부터 메시지를 받을 때 (여기서는 아이폰이 보내기만 할 거라 크게 중요하진 않음)
+        console.log('서버로부터 메시지:', event.data);
+    };
+
+    ws.onclose = function(event) {
+        console.log('웹소켓 연결 끊김:', event.code, event.reason);
+        // 연결이 끊기면 일정 시간 후 재연결 시도
+        setTimeout(connectWebSocket, 1000); // 1초 후 재연결 시도
+    };
+
+    ws.onerror = function(error) {
+        console.error('웹소켓 에러:', error);
+        ws.close(); // 에러 발생 시 연결 종료 후 재연결 시도
+    };
+}
+
+// 센서 데이터 전송 함수 (기존 handleOrientation, handleMotion 함수 수정)
+let sensorData = {}; // 센서 데이터를 저장할 객체
+
+function handleOrientation(event) {
+    sensorData.orientation = {
+        alpha: event.alpha ? event.alpha.toFixed(2) : null,
+        beta: event.beta ? event.beta.toFixed(2) : null,
+        gamma: event.gamma ? event.gamma.toFixed(2) : null
+    };
+    // 웹 페이지에 표시하는 기존 코드는 그대로 유지
+    document.getElementById('orientation-data').innerText = `
+        Alpha (Z축): ${sensorData.orientation.alpha || 'N/A'}
+        Beta (X축): ${sensorData.orientation.beta || 'N/A'}
+        Gamma (Y축): ${sensorData.orientation.gamma || 'N/A'}
+    `;
+    sendSensorData(); // 데이터 전송
+}
+
+function handleMotion(event) {
+    const acceleration = event.acceleration;
+    const rotationRate = event.rotationRate;
+
+    sensorData.motion = {
+        accelX: acceleration && acceleration.x ? acceleration.x.toFixed(2) : null,
+        accelY: acceleration && acceleration.y ? acceleration.y.toFixed(2) : null,
+        accelZ: acceleration && acceleration.z ? acceleration.z.toFixed(2) : null,
+        rotAlpha: rotationRate && rotationRate.alpha ? rotationRate.alpha.toFixed(2) : null,
+        rotBeta: rotationRate && rotationRate.beta ? rotationRate.beta.toFixed(2) : null,
+        rotGamma: rotationRate && rotationRate.gamma ? rotationRate.gamma.toFixed(2) : null
+    };
+    // 웹 페이지에 표시하는 기존 코드는 그대로 유지
+    document.getElementById('motion-data').innerText = `
+        가속도 (중력 제외):
+        X: ${sensorData.motion.accelX || 'N/A'}
+        Y: ${sensorData.motion.accelY || 'N/A'}
+        Z: ${sensorData.motion.accelZ || 'N/A'}
+
+        회전 속도:
+        Alpha (Z축): ${sensorData.motion.rotAlpha || 'N/A'}
+        Beta (X축): ${sensorData.motion.rotBeta || 'N/A'}
+        Gamma (Y축): ${sensorData.motion.rotGamma || 'N/A'}
+    `;
+    sendSensorData(); // 데이터 전송
+}
+
+// 센서 데이터 전송 로직
+let sendInterval;
+function startSendingSensorData() {
+    if (sendInterval) clearInterval(sendInterval); // 기존 인터벌이 있으면 클리어
+    sendInterval = setInterval(() => {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify(sensorData)); // JSON 형태로 전송
         }
-        h1 {
-            color: #007bff;
-        }
-        pre {
-            background-color: #e9e9e9;
-            padding: 15px;
-            border-radius: 5px;
-            white-space: pre-wrap; /* 긴 텍스트도 잘 보이게 */
-        }
-        button {
-            padding: 10px 20px;
-            font-size: 16px;
-            background-color: #28a745;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            margin-bottom: 20px;
-        }
-        button:hover {
-            background-color: #218838;
-        }
-    </style>
-</head>
-<body>
-    <h1>아이폰 센서 데이터 확인</h1>
-    <p>아래 버튼을 눌러 센서 접근 권한을 허용해주세요.</p>
-    <button id="requestPermissionButton">센서 권한 요청</button>
+    }, 100); // 100ms (0.1초)마다 데이터 전송
+}
 
-    <h2>기울기 (DeviceOrientation)</h2>
-    <pre id="orientation-data">데이터 로딩 중...</pre>
-
-    <h2>움직임 (DeviceMotion)</h2>
-    <pre id="motion-data">데이터 로딩 중...</pre>
-
-    <script>
-        // 여기는 자바스크립트 코드를 넣는 곳이야!
-        // iOS 13+ 에서 권한 요청을 위한 버튼 클릭 이벤트
-        const requestPermissionButton = document.getElementById('requestPermissionButton');
-        requestPermissionButton.addEventListener('click', function() {
-            if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-                DeviceOrientationEvent.requestPermission()
-                    .then(permissionState => {
-                        if (permissionState === 'granted') {
-                            window.addEventListener('deviceorientation', handleOrientation);
-                            window.addEventListener('devicemotion', handleMotion);
-                            requestPermissionButton.style.display = 'none'; // 버튼 숨기기
-                        } else {
-                            alert('센서 접근 권한이 거부되었습니다.');
-                        }
-                    })
-                    .catch(console.error);
-            } else {
-                // iOS 12 이하 또는 다른 브라우저 (권한 요청 필요 없음)
-                window.addEventListener('deviceorientation', handleOrientation);
-                window.addEventListener('devicemotion', handleMotion);
-                requestPermissionButton.style.display = 'none'; // 버튼 숨기기
-            }
-        });
-
-        function handleOrientation(event) {
-            const alpha = event.alpha; // Z축 회전 (나침반 방향)
-            const beta = event.beta;   // X축 회전 (앞뒤 기울기)
-            const gamma = event.gamma; // Y축 회전 (좌우 기울기)
-
-            document.getElementById('orientation-data').innerText = `
-                Alpha (Z축): ${alpha ? alpha.toFixed(2) : 'N/A'}
-                Beta (X축): ${beta ? beta.toFixed(2) : 'N/A'}
-                Gamma (Y축): ${gamma ? gamma.toFixed(2) : 'N/A'}
-            `;
-        }
-
-        function handleMotion(event) {
-            const acceleration = event.acceleration; // 가속도 (중력 제외)
-            const rotationRate = event.rotationRate; // 회전 속도
-
-            document.getElementById('motion-data').innerText = `
-                가속도 (중력 제외):
-                X: ${acceleration && acceleration.x ? acceleration.x.toFixed(2) : 'N/A'}
-                Y: ${acceleration && acceleration.y ? acceleration.y.toFixed(2) : 'N/A'}
-                Z: ${acceleration && acceleration.z ? acceleration.z.toFixed(2) : 'N/A'}
-
-                회전 속도:
-                Alpha (Z축): ${rotationRate && rotationRate.alpha ? rotationRate.alpha.toFixed(2) : 'N/A'}
-                Beta (X축): ${rotationRate && rotationRate.beta ? rotationRate.beta.toFixed(2) : 'N/A'}
-                Gamma (Y축): ${rotationRate && rotationRate.gamma ? rotationRate.gamma.toFixed(2) : 'N/A'}
-            `;
-        }
-    </script>
-</body>
-</html>
+// 권한 요청 버튼 클릭 시 웹소켓 연결 시작
+requestPermissionButton.addEventListener('click', function() {
+    // ... (기존 권한 요청 코드) ...
+    if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+        DeviceOrientationEvent.requestPermission()
+            .then(permissionState => {
+                if (permissionState === 'granted') {
+                    window.addEventListener('deviceorientation', handleOrientation);
+                    window.addEventListener('devicemotion', handleMotion);
+                    requestPermissionButton.style.display = 'none';
+                    connectWebSocket(); // 권한 허용 후 웹소켓 연결 시작
+                } else {
+                    alert('센서 접근 권한이 거부되었습니다.');
+                }
+            })
+            .catch(console.error);
+    } else {
+        window.addEventListener('deviceorientation', handleOrientation);
+        window.addEventListener('devicemotion', handleMotion);
+        requestPermissionButton.style.display = 'none';
+        connectWebSocket(); // 권한 허용 후 웹소켓 연결 시작
+    }
+});
