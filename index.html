@@ -202,4 +202,113 @@
             }
         }
 
-        // GPS
+        // GPS 위치 정보 실패 콜백 함수
+        function handleGeolocationError(error) {
+            let errorMessage = '위치 정보를 가져오는 데 실패했습니다: ';
+            switch(error.code) {
+                case error.PERMISSION_DENIED:
+                    errorMessage += '사용자가 위치 정보 요청을 거부했습니다.';
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    errorMessage += '위치 정보를 사용할 수 없습니다.';
+                    break;
+                case error.TIMEOUT:
+                    errorMessage += '위치 정보 요청 시간이 초과되었습니다.';
+                    break;
+                case error.UNKNOWN_ERROR:
+                    errorMessage += '알 수 없는 오류가 발생했습니다.';
+                    break;
+            }
+            document.getElementById('gps-data').innerText = errorMessage;
+            updateDebugStatus('GPS 에러 발생: ' + errorMessage); // 디버그 메시지 추가
+            if (watchId) {
+                navigator.geolocation.clearWatch(watchId);
+                watchId = null;
+            }
+        }
+
+        // Leaflet Map 초기화 함수
+        function initMap(initialLatLng) {
+            updateDebugStatus('initMap 함수 시작. 초기 위치: ' + initialLatLng[0].toFixed(4) + ', ' + initialLatLng[1].toFixed(4));
+            
+            // L 객체가 정의되었는지 확인하는 디버그 메시지 추가 (이전 스크립트에서 이미 확인했지만, 다시 한번)
+            updateDebugStatus('Leaflet (L) 객체 (initMap 내부) 확인: ' + (typeof L !== 'undefined' ? '정의됨' : '정의되지 않음!'));
+
+            try {
+                // 지도 객체 생성
+                map = L.map('map').setView(initialLatLng, 18); // 'map' div에 지도 생성, 초기 위치와 줌 레벨 설정
+                updateDebugStatus('L.map() 호출됨. 지도 객체 생성 완료.');
+
+                // OpenStreetMap 타일 레이어 추가 (무료 지도 타일)
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                }).addTo(map);
+                updateDebugStatus('L.tileLayer() 호출됨. 타일 레이어 추가됨. 지도가 보여야 함!'); // 중요 메시지
+
+                // 경로를 그릴 선 객체 생성
+                polyline = L.polyline(path, {color: 'red', weight: 4}).addTo(map);
+                updateDebugStatus('L.polyline() 호출됨. 경로 선 추가됨.');
+            } catch (e) {
+                updateDebugStatus('지도 초기화 중 치명적인 에러 발생: ' + e.message); // 에러 메시지 출력
+            }
+        }
+
+        // "권한 요청" 버튼 클릭 이벤트 리스너
+        requestPermissionButton.addEventListener('click', function() {
+            // 디버그 메시지 영역 초기화
+            document.getElementById('debug-status').innerHTML = '';
+            updateDebugStatus('권한 요청 버튼 클릭됨.');
+            // 1. IMU 센서 권한 요청
+            if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+                DeviceOrientationEvent.requestPermission()
+                    .then(permissionState => {
+                        if (permissionState === 'granted') {
+                            window.addEventListener('deviceorientation', handleOrientation);
+                            window.addEventListener('devicemotion', handleMotion);
+                            requestPermissionButton.style.display = 'none';
+                            updateDebugStatus('IMU 센서 권한 허용됨.');
+                        } else {
+                            alert('센서 접근 권한이 거부되었습니다. 센서 데이터를 표시할 수 없습니다.');
+                            updateDebugStatus('IMU 센서 권한 거부됨.');
+                        }
+                    })
+                    .catch(error => {
+                        console.error(error);
+                        updateDebugStatus('IMU 센서 권한 요청 중 에러: ' + error.message);
+                    });
+            } else {
+                window.addEventListener('deviceorientation', handleOrientation);
+                window.addEventListener('devicemotion', handleMotion);
+                requestPermissionButton.style.display = 'none';
+                updateDebugStatus('IMU 센서 권한 요청 불필요 (구형 iOS 또는 다른 브라우저).');
+            }
+
+            // 2. 실시간 GPS 위치 정보 요청
+            if (navigator.geolocation) { // 브라우저가 Geolocation을 지원하는지 확인
+                document.getElementById('gps-data').innerText = '위치 정보 요청 중...';
+                updateDebugStatus('GPS 위치 정보 요청 시작.');
+                watchId = navigator.geolocation.watchPosition(
+                    handleGeolocationSuccess,
+                    handleGeolocationError,
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 5000,
+                        maximumAge: 0
+                    }
+                );
+            } else {
+                document.getElementById('gps-data').innerText = '이 브라우저는 Geolocation을 지원하지 않습니다.';
+                updateDebugStatus('이 브라우저는 Geolocation을 지원하지 않습니다.');
+            }
+        });
+
+        // 페이지를 떠날 때 위치 추적 중지
+        window.addEventListener('beforeunload', function() {
+            if (watchId) {
+                navigator.geolocation.clearWatch(watchId);
+                updateDebugStatus('페이지 종료: GPS 추적 중지됨.');
+            }
+        });
+    </script>
+</body>
+</html>
