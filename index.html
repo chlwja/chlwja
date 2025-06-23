@@ -55,6 +55,9 @@
             color: #856404;
             border-radius: 5px;
             font-size: 0.9em;
+            min-height: 50px; /* 최소 높이 설정 */
+            overflow-y: auto; /* 내용이 많아지면 스크롤바 생성 */
+            white-space: pre-wrap; /* 줄바꿈 유지 */
         }
     </style>
 </head>
@@ -92,9 +95,13 @@
         let path = []; // 이동 경로를 저장할 배열 (Leaflet은 [lat, lng] 배열 사용)
         let polyline; // 지도에 그려질 경로 선 객체
 
-        // 디버그 메시지 표시 함수
+        // 디버그 메시지 표시 함수 (메시지 누적 및 시간 추가)
         function updateDebugStatus(message) {
-            document.getElementById('debug-status').innerText = '디버그 메시지: ' + message;
+            const debugElement = document.getElementById('debug-status');
+            const now = new Date();
+            const timestamp = now.toLocaleTimeString(); // 현재 시간 (예: 오후 3:30:00)
+            debugElement.innerHTML += `[${timestamp}] ${message}<br>`; // 기존 메시지에 추가
+            debugElement.scrollTop = debugElement.scrollHeight; // 스크롤을 항상 아래로
         }
 
         // 센서 데이터 처리 함수: 기울기 (DeviceOrientation)
@@ -216,6 +223,8 @@
 
         // "권한 요청" 버튼 클릭 이벤트 리스너
         requestPermissionButton.addEventListener('click', function() {
+            // 디버그 메시지 영역 초기화
+            document.getElementById('debug-status').innerHTML = '';
             updateDebugStatus('권한 요청 버튼 클릭됨.');
             // 1. IMU 센서 권한 요청
             if (typeof DeviceOrientationEvent.requestPermission === 'function') {
