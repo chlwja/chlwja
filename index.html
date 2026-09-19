@@ -570,9 +570,6 @@
 
             if (polyline) {
                 polyline.setLatLngs(path);
-                if (demoTimer && path.length > 1) {
-                    map.fitBounds(polyline.getBounds(), { padding: [28, 28], maxZoom: 17 });
-                }
             }
         }
 
@@ -711,6 +708,9 @@
             function step() {
                 if (demoIndex >= points.length) {
                     stopDemoHunt(false);
+                    if (map && polyline && path.length > 1) {
+                        map.fitBounds(polyline.getBounds(), { padding: [32, 32], maxZoom: 16 });
+                    }
                     updateDebugStatus(cavemanOn ? '연습 사냥 끝. 불 옆에서 쉼.' : '연습 경로 완료.');
                     return;
                 }
@@ -718,8 +718,6 @@
                 demoIndex += 1;
                 if (!map) {
                     initMap(newLatLng);
-                } else {
-                    map.setView(newLatLng, map.getZoom());
                 }
                 appendPoint(newLatLng);
                 const liveGps = document.getElementById('gps-data');
