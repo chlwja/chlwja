@@ -561,10 +561,11 @@
                 currentLocationMarker.setLatLng(newLatLng);
             } else if (map) {
                 currentLocationMarker = L.circleMarker(newLatLng, {
-                    radius: 8,
-                    color: cavemanOn ? '#ffb347' : 'blue',
-                    fillColor: cavemanOn ? '#ff6b1a' : '#3388ff',
-                    fillOpacity: 0.8
+                    radius: cavemanOn ? 11 : 8,
+                    color: cavemanOn ? '#fff7ed' : 'blue',
+                    fillColor: cavemanOn ? '#ffcc33' : '#3388ff',
+                    fillOpacity: 1,
+                    weight: cavemanOn ? 3 : 2
                 }).addTo(map);
             }
 
