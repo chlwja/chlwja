@@ -49,7 +49,8 @@
             --display: "Black Han Sans", "Noto Sans KR", sans-serif;
         }
 
-        * { box-sizing: border-box; }
+        body { box-sizing: border-box; }
+        .topbar, .actions, .hunter-wrap, .stats, .stat, button, pre, h1, h2, p { box-sizing: border-box; }
 
         body {
             font-family: var(--font);
@@ -213,6 +214,7 @@
             border: 1px solid var(--map-border);
             border-radius: 5px;
             overflow: hidden;
+            box-sizing: border-box;
         }
 
         html[data-theme="caveman"] #map {
@@ -451,7 +453,7 @@
 
         function mapStyle() {
             return cavemanOn
-                ? { url: CAVE_TILES, attr: CAVE_ATTR, color: '#ff6b1a', weight: 6 }
+                ? { url: CAVE_TILES, attr: CAVE_ATTR, color: '#ffcc33', weight: 8 }
                 : { url: OSM_TILES, attr: OSM_ATTR, color: 'red', weight: 4 };
         }
 
@@ -568,6 +570,9 @@
 
             if (polyline) {
                 polyline.setLatLngs(path);
+                if (demoTimer && path.length > 1) {
+                    map.fitBounds(polyline.getBounds(), { padding: [28, 28], maxZoom: 17 });
+                }
             }
         }
 
@@ -649,7 +654,7 @@
             updateDebugStatus('Leaflet (L) 객체 (initMap 내부) 확인: ' + (typeof L !== 'undefined' ? '정의됨' : '정의되지 않음!'));
 
             try {
-                map = L.map('map').setView(initialLatLng, 18);
+                map = L.map('map').setView(initialLatLng, 16);
                 const style = mapStyle();
                 tileLayer = L.tileLayer(style.url, { attribution: style.attr }).addTo(map);
                 updateDebugStatus(cavemanOn ? '어두운 땅 깔림. 지도 보여야 함!' : 'L.tileLayer() 호출됨. 타일 레이어 추가됨. 지도가 보여야 함!');
