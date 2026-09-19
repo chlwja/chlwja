@@ -1,300 +1,762 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="ko" data-theme="normal">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>아이폰 센서 및 실시간 GPS 경로 기록 (Leaflet)</title>
-    <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
      integrity="sha256-p4NxAoJBhIIN+hmNHrzxHjWBlS1dLWTNo7C9WFD7Ffdw="
      crossorigin=""/>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        /* 기존 스타일 유지 */
+        :root {
+            --bg: #f0f0f0;
+            --fg: #333;
+            --heading: #007bff;
+            --card: #e9e9e9;
+            --btn: #28a745;
+            --btn-hover: #218838;
+            --btn-text: #fff;
+            --map-border: #ccc;
+            --debug-bg: #fff3cd;
+            --debug-border: #ffeeba;
+            --debug-fg: #856404;
+            --panel: #fff;
+            --accent: #007bff;
+            --shadow: 0 2px 8px rgba(0,0,0,0.08);
+            --font: Arial, "Noto Sans KR", sans-serif;
+            --display: Arial, "Noto Sans KR", sans-serif;
+        }
+
+        html[data-theme="caveman"] {
+            --bg: #1a120b;
+            --fg: #e8dcc8;
+            --heading: #ffb347;
+            --card: #2c2118;
+            --btn: #c2410c;
+            --btn-hover: #9a3412;
+            --btn-text: #fff7ed;
+            --map-border: #5c4033;
+            --debug-bg: #2a1c12;
+            --debug-border: #7c4a1e;
+            --debug-fg: #fbbf24;
+            --panel: #24180f;
+            --accent: #ff6b1a;
+            --shadow: 0 8px 24px rgba(0,0,0,0.45);
+            --font: "Noto Sans KR", Arial, sans-serif;
+            --display: "Black Han Sans", "Noto Sans KR", sans-serif;
+        }
+
+        * { box-sizing: border-box; }
+
         body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-            background-color: #f0f0f0;
-            color: #333;
+            font-family: var(--font);
+            margin: 0;
+            padding: 20px;
+            background-color: var(--bg);
+            color: var(--fg);
+            min-height: 100vh;
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
+
+        html[data-theme="caveman"] body {
+            background-image:
+                radial-gradient(ellipse at top, rgba(255,107,26,0.12), transparent 50%),
+                repeating-linear-gradient(
+                    0deg,
+                    transparent,
+                    transparent 11px,
+                    rgba(0,0,0,0.12) 12px
+                );
+        }
+
+        .topbar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
         h1 {
-            color: #007bff;
+            color: var(--heading);
+            font-family: var(--display);
+            font-size: 1.6rem;
+            margin: 0 0 8px;
+            line-height: 1.3;
         }
-        pre {
-            background-color: #e9e9e9;
-            padding: 15px;
-            border-radius: 5px;
-            white-space: pre-wrap;
+
+        h2 {
+            color: var(--heading);
+            font-family: var(--display);
+            font-size: 1.15rem;
+            margin: 22px 0 8px;
         }
+
+        .intro {
+            margin: 0 0 16px;
+            max-width: 42rem;
+        }
+
+        .actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
         button {
             padding: 10px 20px;
             font-size: 16px;
-            background-color: #28a745;
-            color: white;
+            font-family: var(--font);
+            background-color: var(--btn);
+            color: var(--btn-text);
             border: none;
             border-radius: 5px;
             cursor: pointer;
-            margin-bottom: 20px;
         }
-        button:hover {
-            background-color: #218838;
+
+        button:hover { background-color: var(--btn-hover); }
+
+        #cavemanToggle {
+            background: #3d2b1f;
+            color: #ffb347;
+            border: 2px solid #ff6b1a;
         }
-        /* 지도 스타일 추가 - 네모칸 넘어서 보이는 문제 해결 */
-        #map {
-            height: 400px; /* 지도의 높이 설정 */
-            width: 100%;  /* 지도의 너비 설정 */
-            margin-top: 20px;
-            border: 1px solid #ccc;
+
+        html[data-theme="caveman"] #cavemanToggle {
+            background: #ff6b1a;
+            color: #1a120b;
+            box-shadow: 0 0 18px rgba(255,107,26,0.45);
+        }
+
+        #demoHuntButton {
+            background: #0d6efd;
+        }
+
+        html[data-theme="caveman"] #demoHuntButton {
+            background: #6b8f71;
+            color: #1a120b;
+        }
+
+        .hunter-wrap {
+            display: none;
+            align-items: center;
+            gap: 16px;
+            margin: 8px 0 18px;
+            padding: 12px 16px;
+            background: var(--panel);
+            border: 2px solid var(--map-border);
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+        }
+
+        html[data-theme="caveman"] .hunter-wrap { display: flex; }
+
+        #hunter {
+            width: 72px;
+            height: 88px;
+            transform-origin: 50% 80%;
+            transition: transform 0.12s linear;
+            flex-shrink: 0;
+        }
+
+        .hunter-status {
+            font-family: var(--display);
+            font-size: 1.1rem;
+            color: var(--heading);
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .stat {
+            background: var(--panel);
+            border: 1px solid var(--map-border);
+            border-radius: 8px;
+            padding: 12px;
+            box-shadow: var(--shadow);
+        }
+
+        .stat .label {
+            font-size: 0.8rem;
+            opacity: 0.8;
+            margin-bottom: 4px;
+        }
+
+        .stat .value {
+            font-family: var(--display);
+            font-size: 1.25rem;
+            color: var(--heading);
+        }
+
+        pre {
+            background-color: var(--card);
+            color: var(--fg);
+            padding: 15px;
             border-radius: 5px;
-            box-sizing: border-box; /* 패딩과 보더가 너비/높이에 포함되도록 */
-            overflow: hidden;      /* 내용이 넘치면 숨김 처리 */
+            white-space: pre-wrap;
+            margin: 0;
         }
-        /* 디버그 메시지 스타일 */
+
+        #map {
+            height: 400px;
+            width: 100%;
+            margin-top: 8px;
+            border: 1px solid var(--map-border);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        html[data-theme="caveman"] #map {
+            border-width: 3px;
+            border-color: #7c4a1e;
+            filter: sepia(0.25) saturate(0.85);
+        }
+
         #debug-status {
             margin-top: 10px;
             padding: 10px;
-            background-color: #fff3cd; /* 경고색 배경 */
-            border: 1px solid #ffeeba;
-            color: #856404;
+            background-color: var(--debug-bg);
+            border: 1px solid var(--debug-border);
+            color: var(--debug-fg);
             border-radius: 5px;
             font-size: 0.9em;
-            min-height: 50px; /* 최소 높이 설정 */
-            overflow-y: auto; /* 내용이 많아지면 스크롤바 생성 */
-            white-space: pre-wrap; /* 줄바꿈 유지 */
+            min-height: 50px;
+            max-height: 180px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+
+        @media (max-width: 640px) {
+            body { padding: 14px; }
+            h1 { font-size: 1.3rem; }
+            #map { height: 280px; }
         }
     </style>
 </head>
 <body>
-    <h1>아이폰 센서 및 실시간 GPS 경로 기록 (Leaflet)</h1>
-    <p>아래 버튼을 눌러 센서 및 위치 접근 권한을 허용해주세요.</p>
-    <button id="requestPermissionButton">권한 요청</button>
+    <div class="topbar">
+        <div>
+            <h1 id="page-title">아이폰 센서 및 실시간 GPS 경로 기록 (Leaflet)</h1>
+            <p id="page-intro" class="intro">아래 버튼을 눌러 센서 및 위치 접근 권한을 허용해주세요.</p>
+        </div>
+    </div>
 
-    <h2>기울기 (DeviceOrientation)</h2>
+    <div class="actions">
+        <button id="requestPermissionButton">권한 요청</button>
+        <button id="demoHuntButton" type="button">연습 경로</button>
+        <button id="cavemanToggle" type="button" aria-pressed="false">CAVEMAN MODE</button>
+    </div>
+
+    <div class="hunter-wrap" id="hunter-wrap">
+        <svg id="hunter" viewBox="0 0 72 88" aria-hidden="true">
+            <circle cx="36" cy="16" r="10" fill="#e8dcc8"/>
+            <rect x="28" y="26" width="16" height="28" rx="4" fill="#c2410c"/>
+            <rect x="24" y="54" width="8" height="24" rx="3" fill="#7c4a1e"/>
+            <rect x="40" y="54" width="8" height="24" rx="3" fill="#7c4a1e"/>
+            <rect x="18" y="28" width="8" height="20" rx="3" fill="#e8dcc8"/>
+            <rect x="52" y="8" width="4" height="44" rx="2" fill="#a16207"/>
+            <polygon points="50,8 58,8 54,0" fill="#dc2626"/>
+        </svg>
+        <div>
+            <div class="hunter-status" id="hunter-status">바위 위. 아직 안 움직임.</div>
+            <div id="hunter-hint">폰 기울이면 사냥꾼도 기울어짐.</div>
+        </div>
+    </div>
+
+    <div class="stats" id="hunt-stats">
+        <div class="stat">
+            <div class="label" id="stat-distance-label">이동 거리</div>
+            <div class="value" id="stat-distance">0 m</div>
+        </div>
+        <div class="stat">
+            <div class="label" id="stat-steps-label">걸음</div>
+            <div class="value" id="stat-steps">0</div>
+        </div>
+        <div class="stat">
+            <div class="label" id="stat-points-label">경로 점</div>
+            <div class="value" id="stat-points">0</div>
+        </div>
+    </div>
+
+    <h2 id="orientation-heading">기울기 (DeviceOrientation)</h2>
     <pre id="orientation-data">데이터 로딩 중...</pre>
 
-    <h2>움직임 (DeviceMotion)</h2>
+    <h2 id="motion-heading">움직임 (DeviceMotion)</h2>
     <pre id="motion-data">데이터 로딩 중...</pre>
 
-    <h2>실시간 GPS 위치 정보</h2>
+    <h2 id="gps-heading">실시간 GPS 위치 정보</h2>
     <pre id="gps-data">위치 정보 대기 중...</pre>
 
-    <h2>이동 경로</h2>
-    <div id="map"></div> <!-- 지도가 표시될 영역 -->
+    <h2 id="path-heading">이동 경로</h2>
+    <div id="map"></div>
 
-    <p id="debug-status">디버그 메시지: 초기화 중...</p> <!-- 디버그 메시지 표시 영역 -->
+    <p id="debug-status">디버그 메시지: 초기화 중...</p>
 
-    <!-- Leaflet JavaScript (integrity, crossorigin 속성 제거됨) -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-    <!-- L 객체 즉시 확인용 스크립트 -->
     <script>
-        // 이 스크립트가 실행될 때 L 객체가 정의되어 있는지 즉시 확인
-        // updateDebugStatus 함수가 아직 정의되지 않았을 수 있으므로 직접 DOM 조작
         const debugElement = document.getElementById('debug-status');
-        const now = new Date();
-        const timestamp = now.toLocaleTimeString();
+        const nowBoot = new Date();
+        const bootStamp = nowBoot.toLocaleTimeString();
         if (typeof L !== 'undefined') {
-            debugElement.innerHTML += `[${timestamp}] Leaflet (L) 객체: 스크립트 로드 직후 정의됨! (매우 중요)<br>`;
+            debugElement.innerHTML += `[${bootStamp}] Leaflet (L) 객체: 스크립트 로드 직후 정의됨! (매우 중요)<br>`;
         } else {
-            debugElement.innerHTML += `[${timestamp}] Leaflet (L) 객체: 스크립트 로드 직후 정의되지 않음! (문제 심각)<br>`;
+            debugElement.innerHTML += `[${bootStamp}] Leaflet (L) 객체: 스크립트 로드 직후 정의되지 않음! (문제 심각)<br>`;
         }
     </script>
 
     <script>
-        // 권한 요청 버튼 요소 가져오기
+        const COPY = {
+            normal: {
+                title: '아이폰 센서 및 실시간 GPS 경로 기록 (Leaflet)',
+                intro: '아래 버튼을 눌러 센서 및 위치 접근 권한을 허용해주세요.',
+                permission: '권한 요청',
+                demo: '연습 경로',
+                cavemanBtn: 'CAVEMAN MODE',
+                orientation: '기울기 (DeviceOrientation)',
+                motion: '움직임 (DeviceMotion)',
+                gps: '실시간 GPS 위치 정보',
+                path: '이동 경로',
+                waitingOrientation: '데이터 로딩 중...',
+                waitingMotion: '데이터 로딩 중...',
+                waitingGps: '위치 정보 대기 중...',
+                requestingGps: '위치 정보 요청 중...',
+                distance: '이동 거리',
+                steps: '걸음',
+                points: '경로 점',
+                hunterIdle: '대기 중.',
+                hunterHint: '폰을 기울이면 캐릭터가 따라 기울어집니다.',
+                debugInit: '디버그 메시지: 초기화 중...'
+            },
+            caveman: {
+                title: '바위눈 켜고 사냥길 긋기',
+                intro: '하늘 눈, 몸 흔들림. 허락 없으면 길 못 그림. 데스크톱이면 연습 사냥도 됨.',
+                permission: '눈 빌려주라',
+                demo: '연습 사냥',
+                cavemanBtn: 'CAVEMAN ON',
+                orientation: '바위 기울어짐',
+                motion: '몸 흔들림',
+                gps: '나 서있는 곳',
+                path: '사냥 길',
+                waitingOrientation: '바위 아직 안 기울어짐...',
+                waitingMotion: '몸 아직 안 흔들림...',
+                waitingGps: '하늘 눈 기다리는 중...',
+                requestingGps: '하늘 눈 뜨는 중...',
+                distance: '걸어간 길이',
+                steps: '발자국',
+                points: '돌멩이 표시',
+                hunterIdle: '바위 위. 아직 안 움직임.',
+                hunterHint: '폰 기울이면 사냥꾼도 기울어짐.',
+                debugInit: '동굴 낙서: 불 붙이는 중...'
+            }
+        };
+
+        const OSM_TILES = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+        const OSM_ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+        const CAVE_TILES = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+        const CAVE_ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>';
+
+        const STEP_METERS = 0.75;
+        const DEMO_CENTER = [37.5665, 126.9780];
+
         const requestPermissionButton = document.getElementById('requestPermissionButton');
-        let watchId; // watchPosition의 ID를 저장할 변수
+        const demoHuntButton = document.getElementById('demoHuntButton');
+        const cavemanToggle = document.getElementById('cavemanToggle');
 
-        // Leaflet Maps 관련 변수
+        let watchId;
         let map;
-        let path = []; // 이동 경로를 저장할 배열 (Leaflet은 [lat, lng] 배열 사용)
-        let polyline; // 지도에 그려질 경로 선 객체
-        let currentLocationMarker; // 현재 위치를 표시할 마커
+        let path = [];
+        let polyline;
+        let currentLocationMarker;
+        let tileLayer;
+        let demoTimer;
+        let demoIndex = 0;
+        let huntMeters = 0;
+        let lastBeta = 0;
+        let lastGamma = 0;
+        let cavemanOn = localStorage.getItem('cavemanMode') === 'on';
 
-        // 디버그 메시지 표시 함수 (메시지 누적 및 시간 추가)
-        function updateDebugStatus(message) {
-            const debugElement = document.getElementById('debug-status');
-            const now = new Date();
-            const timestamp = now.toLocaleTimeString(); // 현재 시간 (예: 오후 3:30:00)
-            debugElement.innerHTML += `[${timestamp}] ${message}<br>`; // 기존 메시지에 추가
-            debugElement.scrollTop = debugElement.scrollHeight; // 스크롤을 항상 아래로
+        function t() {
+            return cavemanOn ? COPY.caveman : COPY.normal;
         }
 
-        // 센서 데이터 처리 함수: 기울기 (DeviceOrientation)
+        function stamp() {
+            return new Date().toLocaleTimeString();
+        }
+
+        function updateDebugStatus(message) {
+            const el = document.getElementById('debug-status');
+            el.innerHTML += `[${stamp()}] ${message}<br>`;
+            el.scrollTop = el.scrollHeight;
+        }
+
+        function haversineMeters(a, b) {
+            const R = 6371000;
+            const toRad = (d) => d * Math.PI / 180;
+            const dLat = toRad(b[0] - a[0]);
+            const dLng = toRad(b[1] - a[1]);
+            const lat1 = toRad(a[0]);
+            const lat2 = toRad(b[0]);
+            const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+            return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+        }
+
+        function formatDistance(meters) {
+            if (meters < 1000) return meters.toFixed(1) + ' m';
+            return (meters / 1000).toFixed(2) + ' km';
+        }
+
+        function updateHuntStats() {
+            document.getElementById('stat-distance').textContent = formatDistance(huntMeters);
+            document.getElementById('stat-steps').textContent = String(Math.round(huntMeters / STEP_METERS));
+            document.getElementById('stat-points').textContent = String(path.length);
+        }
+
+        function applyCopy() {
+            const c = t();
+            document.title = c.title;
+            document.getElementById('page-title').textContent = c.title;
+            document.getElementById('page-intro').textContent = c.intro;
+            requestPermissionButton.textContent = c.permission;
+            demoHuntButton.textContent = c.demo;
+            cavemanToggle.textContent = c.cavemanBtn;
+            cavemanToggle.setAttribute('aria-pressed', cavemanOn ? 'true' : 'false');
+            document.getElementById('orientation-heading').textContent = c.orientation;
+            document.getElementById('motion-heading').textContent = c.motion;
+            document.getElementById('gps-heading').textContent = c.gps;
+            document.getElementById('path-heading').textContent = c.path;
+            document.getElementById('stat-distance-label').textContent = c.distance;
+            document.getElementById('stat-steps-label').textContent = c.steps;
+            document.getElementById('stat-points-label').textContent = c.points;
+            document.getElementById('hunter-hint').textContent = c.hunterHint;
+
+            const orient = document.getElementById('orientation-data');
+            if (orient.dataset.live !== '1') orient.textContent = c.waitingOrientation;
+            const motion = document.getElementById('motion-data');
+            if (motion.dataset.live !== '1') motion.textContent = c.waitingMotion;
+            const gps = document.getElementById('gps-data');
+            if (gps.dataset.live !== '1') gps.textContent = c.waitingGps;
+
+            const hunter = document.getElementById('hunter-status');
+            if (hunter.dataset.live !== '1') hunter.textContent = c.hunterIdle;
+        }
+
+        function mapStyle() {
+            return cavemanOn
+                ? { url: CAVE_TILES, attr: CAVE_ATTR, color: '#ff6b1a', weight: 6 }
+                : { url: OSM_TILES, attr: OSM_ATTR, color: 'red', weight: 4 };
+        }
+
+        function restyleMap() {
+            if (!map) return;
+            const style = mapStyle();
+            if (tileLayer) {
+                map.removeLayer(tileLayer);
+            }
+            tileLayer = L.tileLayer(style.url, { attribution: style.attr }).addTo(map);
+            if (polyline) {
+                polyline.setStyle({ color: style.color, weight: style.weight });
+            }
+            if (currentLocationMarker) {
+                currentLocationMarker.setStyle({
+                    color: cavemanOn ? '#ffb347' : 'blue',
+                    fillColor: cavemanOn ? '#ff6b1a' : '#3388ff'
+                });
+            }
+        }
+
+        function setCavemanMode(on, silent) {
+            cavemanOn = on;
+            document.documentElement.dataset.theme = on ? 'caveman' : 'normal';
+            localStorage.setItem('cavemanMode', on ? 'on' : 'off');
+            applyCopy();
+            restyleMap();
+            if (!silent) {
+                updateDebugStatus(on ? 'Caveman mode ON. Hunt trail ready.' : 'Caveman mode OFF. Normal tracker.');
+            }
+        }
+
+        function tiltHunter(beta, gamma) {
+            const rot = Math.max(-28, Math.min(28, (gamma || 0) * 0.45));
+            const lean = Math.max(-18, Math.min(18, (beta || 0) * 0.15));
+            document.getElementById('hunter').style.transform =
+                'rotate(' + rot + 'deg) translateY(' + lean + 'px)';
+        }
+
         function handleOrientation(event) {
             const alpha = event.alpha;
             const beta = event.beta;
             const gamma = event.gamma;
-            document.getElementById('orientation-data').innerText = `
-                Alpha (Z축): ${alpha ? alpha.toFixed(2) : 'N/A'}
-                Beta (X축): ${beta ? beta.toFixed(2) : 'N/A'}
-                Gamma (Y축): ${gamma ? gamma.toFixed(2) : 'N/A'}
-            `;
+            lastBeta = beta || 0;
+            lastGamma = gamma || 0;
+            tiltHunter(lastBeta, lastGamma);
+            const el = document.getElementById('orientation-data');
+            el.dataset.live = '1';
+            if (cavemanOn) {
+                el.innerText =
+                    'Z 돌림: ' + (alpha ? alpha.toFixed(2) : '모름') + '\n' +
+                    '앞뒤 기울: ' + (beta ? beta.toFixed(2) : '모름') + '\n' +
+                    '옆 기울: ' + (gamma ? gamma.toFixed(2) : '모름');
+            } else {
+                el.innerText =
+                    'Alpha (Z축): ' + (alpha ? alpha.toFixed(2) : 'N/A') + '\n' +
+                    'Beta (X축): ' + (beta ? beta.toFixed(2) : 'N/A') + '\n' +
+                    'Gamma (Y축): ' + (gamma ? gamma.toFixed(2) : 'N/A');
+            }
         }
 
-        // 센서 데이터 처리 함수: 움직임 (DeviceMotion)
         function handleMotion(event) {
             const acceleration = event.acceleration;
             const rotationRate = event.rotationRate;
-            document.getElementById('motion-data').innerText = `
-                가속도 (중력 제외):
-                X: ${acceleration && acceleration.x ? acceleration.x.toFixed(2) : 'N/A'}
-                Y: ${acceleration && acceleration.y ? acceleration.y.toFixed(2) : 'N/A'}
-                Z: ${acceleration && acceleration.z ? acceleration.z.toFixed(2) : 'N/A'}
-
-                회전 속도:
-                Alpha (Z축): ${rotationRate && rotationRate.alpha ? rotationRate.alpha.toFixed(2) : 'N/A'}
-                Beta (X축): ${rotationRate && rotationRate.beta ? rotationRate.beta.toFixed(2) : 'N/A'}
-                Gamma (Y축): ${rotationRate && rotationRate.gamma ? rotationRate.gamma.toFixed(2) : 'N/A'}
-            `;
+            const el = document.getElementById('motion-data');
+            el.dataset.live = '1';
+            const ax = acceleration && acceleration.x ? acceleration.x.toFixed(2) : (cavemanOn ? '모름' : 'N/A');
+            const ay = acceleration && acceleration.y ? acceleration.y.toFixed(2) : (cavemanOn ? '모름' : 'N/A');
+            const az = acceleration && acceleration.z ? acceleration.z.toFixed(2) : (cavemanOn ? '모름' : 'N/A');
+            const ra = rotationRate && rotationRate.alpha ? rotationRate.alpha.toFixed(2) : (cavemanOn ? '모름' : 'N/A');
+            const rb = rotationRate && rotationRate.beta ? rotationRate.beta.toFixed(2) : (cavemanOn ? '모름' : 'N/A');
+            const rg = rotationRate && rotationRate.gamma ? rotationRate.gamma.toFixed(2) : (cavemanOn ? '모름' : 'N/A');
+            if (cavemanOn) {
+                el.innerText =
+                    '발 구르기 (중력 빼)\n' +
+                    'X: ' + ax + '\nY: ' + ay + '\nZ: ' + az + '\n\n' +
+                    '몸 돌리기\nZ: ' + ra + '\nX: ' + rb + '\nY: ' + rg;
+            } else {
+                el.innerText =
+                    '가속도 (중력 제외):\n' +
+                    'X: ' + ax + '\nY: ' + ay + '\nZ: ' + az + '\n\n' +
+                    '회전 속도:\n' +
+                    'Alpha (Z축): ' + ra + '\nBeta (X축): ' + rb + '\nGamma (Y축): ' + rg;
+            }
         }
 
-        // GPS 위치 정보 성공 콜백 함수 (실시간 업데이트)
+        function setHunterMoved() {
+            const hunter = document.getElementById('hunter-status');
+            hunter.dataset.live = '1';
+            hunter.textContent = cavemanOn ? '나 걸어. 사냥길 길어짐.' : '이동 중. 경로를 기록합니다.';
+        }
+
+        function appendPoint(newLatLng) {
+            if (path.length > 0) {
+                huntMeters += haversineMeters(path[path.length - 1], newLatLng);
+            }
+            path.push(newLatLng);
+            updateHuntStats();
+            setHunterMoved();
+
+            if (currentLocationMarker) {
+                currentLocationMarker.setLatLng(newLatLng);
+            } else if (map) {
+                currentLocationMarker = L.circleMarker(newLatLng, {
+                    radius: 8,
+                    color: cavemanOn ? '#ffb347' : 'blue',
+                    fillColor: cavemanOn ? '#ff6b1a' : '#3388ff',
+                    fillOpacity: 0.8
+                }).addTo(map);
+            }
+
+            if (polyline) {
+                polyline.setLatLngs(path);
+            }
+        }
+
         function handleGeolocationSuccess(position) {
+            stopDemoHunt(false);
             const latitude = position.coords.latitude;
             const longitude = position.coords.longitude;
             const accuracy = position.coords.accuracy;
             const timestamp = new Date(position.timestamp).toLocaleTimeString();
+            const gpsEl = document.getElementById('gps-data');
+            gpsEl.dataset.live = '1';
 
-            document.getElementById('gps-data').innerText = `
-                위도: ${latitude.toFixed(6)}
-                경도: ${longitude.toFixed(6)}
-                정확도: ${accuracy.toFixed(2)} m
-                업데이트 시간: ${timestamp}
-            `;
+            if (cavemanOn) {
+                gpsEl.innerText =
+                    '위도: ' + latitude.toFixed(6) + '\n' +
+                    '경도: ' + longitude.toFixed(6) + '\n' +
+                    '눈 정확: ' + accuracy.toFixed(2) + ' m\n' +
+                    '찍은 때: ' + timestamp;
+            } else {
+                gpsEl.innerText =
+                    '위도: ' + latitude.toFixed(6) + '\n' +
+                    '경도: ' + longitude.toFixed(6) + '\n' +
+                    '정확도: ' + accuracy.toFixed(2) + ' m\n' +
+                    '업데이트 시간: ' + timestamp;
+            }
 
-            // 지도에 현재 위치 표시 및 경로 업데이트
-            const newLatLng = [latitude, longitude]; // Leaflet은 [lat, lng] 배열 사용
+            const newLatLng = [latitude, longitude];
+            updateDebugStatus(
+                cavemanOn
+                    ? '하늘 눈 봄. 위 ' + latitude.toFixed(4) + ' 경 ' + longitude.toFixed(4)
+                    : 'GPS 데이터 수신. 위도: ' + latitude.toFixed(4) + ', 경도: ' + longitude.toFixed(4)
+            );
 
-            updateDebugStatus('GPS 데이터 수신. 위도: ' + latitude.toFixed(4) + ', 경도: ' + longitude.toFixed(4));
-
-            if (!map) { // 지도가 아직 초기화되지 않았다면 초기화
-                updateDebugStatus('지도가 아직 초기화되지 않음. initMap 호출 시도.');
+            if (!map) {
+                updateDebugStatus(cavemanOn ? '지도 없음. 동굴 벽 그림 시작.' : '지도가 아직 초기화되지 않음. initMap 호출 시도.');
                 initMap(newLatLng);
             } else {
-                updateDebugStatus('지도 이미 초기화됨. 중심 이동 및 경로 업데이트.');
-                map.setView(newLatLng, map.getZoom()); // 지도의 중심을 현재 위치로 이동 (줌 레벨 유지)
+                map.setView(newLatLng, map.getZoom());
             }
 
-            // 경로에 새 위치 추가
-            path.push(newLatLng);
-            updateDebugStatus('경로 배열에 새 위치 추가됨. 현재 경로 점 개수: ' + path.length);
-
-            // --- 현재 위치 마커 추가/업데이트 ---
-            if (currentLocationMarker) {
-                currentLocationMarker.setLatLng(newLatLng); // 마커 위치 업데이트
-            } else {
-                currentLocationMarker = L.circleMarker(newLatLng, {
-                    radius: 8,
-                    color: 'blue',
-                    fillColor: '#3388ff',
-                    fillOpacity: 0.8
-                }).addTo(map);
-            }
-            updateDebugStatus('현재 위치 마커 업데이트됨.');
-            // --- 현재 위치 마커 추가/업데이트 끝 ---
-
-            if (polyline) { // polyline이 정의되었는지 확인
-                polyline.setLatLngs(path); // 경로 선 업데이트
-                updateDebugStatus('경로 선 업데이트됨. 현재 경로 점 개수: ' + path.length);
-            } else {
-                updateDebugStatus('경로 선(polyline)이 아직 정의되지 않음.');
-            }
+            appendPoint(newLatLng);
+            updateDebugStatus(
+                cavemanOn
+                    ? '돌멩이 ' + path.length + '개. 길 ' + formatDistance(huntMeters)
+                    : '경로 배열에 새 위치 추가됨. 현재 경로 점 개수: ' + path.length
+            );
         }
 
-        // GPS 위치 정보 실패 콜백 함수
         function handleGeolocationError(error) {
-            let errorMessage = '위치 정보를 가져오는 데 실패했습니다: ';
-            switch(error.code) {
+            let errorMessage = cavemanOn ? '하늘 눈 실패: ' : '위치 정보를 가져오는 데 실패했습니다: ';
+            switch (error.code) {
                 case error.PERMISSION_DENIED:
-                    errorMessage += '사용자가 위치 정보 요청을 거부했습니다.';
+                    errorMessage += cavemanOn ? '너가 눈 막음.' : '사용자가 위치 정보 요청을 거부했습니다.';
                     break;
                 case error.POSITION_UNAVAILABLE:
-                    errorMessage += '위치 정보를 사용할 수 없습니다.';
+                    errorMessage += cavemanOn ? '하늘 흐림. 위치 없음.' : '위치 정보를 사용할 수 없습니다.';
                     break;
                 case error.TIMEOUT:
-                    errorMessage += '위치 정보 요청 시간이 초과되었습니다.';
+                    errorMessage += cavemanOn ? '너무 오래 기다림.' : '위치 정보 요청 시간이 초과되었습니다.';
                     break;
-                case error.UNKNOWN_ERROR:
-                    errorMessage += '알 수 없는 오류가 발생했습니다.';
-                    break;
+                default:
+                    errorMessage += cavemanOn ? '뭔 일인지 모름.' : '알 수 없는 오류가 발생했습니다.';
             }
-            document.getElementById('gps-data').innerText = errorMessage;
-            updateDebugStatus('GPS 에러 발생: ' + errorMessage); // 디버그 메시지 추가
+            const gpsEl = document.getElementById('gps-data');
+            gpsEl.dataset.live = '1';
+            gpsEl.innerText = errorMessage;
+            updateDebugStatus((cavemanOn ? 'GPS 화남: ' : 'GPS 에러 발생: ') + errorMessage);
             if (watchId) {
                 navigator.geolocation.clearWatch(watchId);
                 watchId = null;
             }
         }
 
-        // Leaflet Map 초기화 함수
         function initMap(initialLatLng) {
-            updateDebugStatus('initMap 함수 시작. 초기 위치: ' + initialLatLng[0].toFixed(4) + ', ' + initialLatLng[1].toFixed(4));
-            
-            // L 객체가 정의되었는지 확인하는 디버그 메시지 추가 (이전 스크립트에서 이미 확인했지만, 다시 한번)
+            updateDebugStatus(
+                (cavemanOn ? '동굴 지도 시작. ' : 'initMap 함수 시작. 초기 위치: ') +
+                initialLatLng[0].toFixed(4) + ', ' + initialLatLng[1].toFixed(4)
+            );
             updateDebugStatus('Leaflet (L) 객체 (initMap 내부) 확인: ' + (typeof L !== 'undefined' ? '정의됨' : '정의되지 않음!'));
 
             try {
-                // 지도 객체 생성
-                map = L.map('map').setView(initialLatLng, 18); // 'map' div에 지도 생성, 초기 위치와 줌 레벨 설정
-                updateDebugStatus('L.map() 호출됨. 지도 객체 생성 완료.');
+                map = L.map('map').setView(initialLatLng, 18);
+                const style = mapStyle();
+                tileLayer = L.tileLayer(style.url, { attribution: style.attr }).addTo(map);
+                updateDebugStatus(cavemanOn ? '어두운 땅 깔림. 지도 보여야 함!' : 'L.tileLayer() 호출됨. 타일 레이어 추가됨. 지도가 보여야 함!');
 
-                // OpenStreetMap 타일 레이어 추가 (무료 지도 타일)
-                const tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                }).addTo(map);
-                updateDebugStatus('L.tileLayer() 호출됨. 타일 레이어 추가됨. 지도가 보여야 함!'); // 중요 메시지
-
-                // 타일 로드 성공/실패 이벤트 리스너 추가
-                tileLayer.on('load', function() {
-                    updateDebugStatus('지도 타일 로드 성공!');
+                tileLayer.on('load', function () {
+                    updateDebugStatus(cavemanOn ? '땅 그림 다 옴!' : '지도 타일 로드 성공!');
                 });
-                tileLayer.on('tileerror', function(error) {
+                tileLayer.on('tileerror', function (error) {
                     updateDebugStatus('지도 타일 로드 에러 발생: ' + error.message + ' URL: ' + error.tile.src);
                 });
 
-
-                // 경로를 그릴 선 객체 생성
-                polyline = L.polyline(path, {color: 'red', weight: 4}).addTo(map);
-                updateDebugStatus('L.polyline() 호출됨. 경로 선 추가됨.');
+                polyline = L.polyline(path, { color: style.color, weight: style.weight }).addTo(map);
+                updateDebugStatus(cavemanOn ? '사냥길 선 그음.' : 'L.polyline() 호출됨. 경로 선 추가됨.');
             } catch (e) {
-                updateDebugStatus('지도 초기화 중 치명적인 에러 발생: ' + e.message); // 에러 메시지 출력
+                updateDebugStatus('지도 초기화 중 치명적인 에러 발생: ' + e.message);
             }
         }
 
-        // "권한 요청" 버튼 클릭 이벤트 리스너
-        requestPermissionButton.addEventListener('click', function() {
-            // 디버그 메시지 영역 초기화
+        function stopDemoHunt(resetPath) {
+            if (demoTimer) {
+                clearInterval(demoTimer);
+                demoTimer = null;
+            }
+            if (resetPath) {
+                demoIndex = 0;
+            }
+        }
+
+        function startDemoHunt() {
+            stopDemoHunt(true);
+            if (watchId) {
+                navigator.geolocation.clearWatch(watchId);
+                watchId = null;
+            }
+            path = [];
+            huntMeters = 0;
+            updateHuntStats();
+            const gpsEl = document.getElementById('gps-data');
+            gpsEl.dataset.live = '1';
+            gpsEl.innerText = cavemanOn ? '연습 사냥 시작. 서울 한복판.' : '연습 경로 시작 (서울시청 근처 시뮬레이션).';
+            updateDebugStatus(cavemanOn ? '연습 사냥. 진짜 GPS 아님.' : '연습 경로 시작. GPS 시뮬레이트.');
+
+            const points = [];
+            for (let i = 0; i < 24; i++) {
+                points.push([
+                    DEMO_CENTER[0] + Math.sin(i / 4) * 0.0012,
+                    DEMO_CENTER[1] + i * 0.00018
+                ]);
+            }
+
+            function step() {
+                if (demoIndex >= points.length) {
+                    stopDemoHunt(false);
+                    updateDebugStatus(cavemanOn ? '연습 사냥 끝. 불 옆에서 쉼.' : '연습 경로 완료.');
+                    return;
+                }
+                const newLatLng = points[demoIndex];
+                demoIndex += 1;
+                if (!map) {
+                    initMap(newLatLng);
+                } else {
+                    map.setView(newLatLng, map.getZoom());
+                }
+                appendPoint(newLatLng);
+                const liveGps = document.getElementById('gps-data');
+                liveGps.dataset.live = '1';
+                liveGps.innerText =
+                    (cavemanOn ? '연습 위도: ' : '위도: ') + newLatLng[0].toFixed(6) + '\n' +
+                    (cavemanOn ? '연습 경도: ' : '경도: ') + newLatLng[1].toFixed(6) + '\n' +
+                    (cavemanOn ? '눈 정확: 연습\n' : '정확도: 시뮬레이션\n') +
+                    (cavemanOn ? '찍은 때: ' : '업데이트 시간: ') + stamp();
+            }
+
+            step();
+            demoTimer = setInterval(step, 700);
+        }
+
+        function requestSensorsAndGps() {
             document.getElementById('debug-status').innerHTML = '';
-            updateDebugStatus('권한 요청 버튼 클릭됨.');
-            // 1. IMU 센서 권한 요청
-            if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+            updateDebugStatus(cavemanOn ? '눈 빌려달라 함.' : '권한 요청 버튼 클릭됨.');
+
+            if (typeof DeviceOrientationEvent !== 'undefined' &&
+                typeof DeviceOrientationEvent.requestPermission === 'function') {
                 DeviceOrientationEvent.requestPermission()
-                    .then(permissionState => {
+                    .then(function (permissionState) {
                         if (permissionState === 'granted') {
                             window.addEventListener('deviceorientation', handleOrientation);
                             window.addEventListener('devicemotion', handleMotion);
                             requestPermissionButton.style.display = 'none';
-                            updateDebugStatus('IMU 센서 권한 허용됨.');
+                            updateDebugStatus(cavemanOn ? '몸 감각 열림.' : 'IMU 센서 권한 허용됨.');
                         } else {
-                            alert('센서 접근 권한이 거부되었습니다. 센서 데이터를 표시할 수 없습니다.');
-                            updateDebugStatus('IMU 센서 권한 거부됨.');
+                            alert(cavemanOn ? '몸 감각 거부됨. 기울기 모름.' : '센서 접근 권한이 거부되었습니다. 센서 데이터를 표시할 수 없습니다.');
+                            updateDebugStatus(cavemanOn ? '몸 감각 거부됨.' : 'IMU 센서 권한 거부됨.');
                         }
                     })
-                    .catch(error => {
+                    .catch(function (error) {
                         console.error(error);
-                        updateDebugStatus('IMU 센서 권한 요청 중 에러: ' + error.message);
+                        updateDebugStatus((cavemanOn ? '몸 감각 요청 화남: ' : 'IMU 센서 권한 요청 중 에러: ') + error.message);
                     });
             } else {
                 window.addEventListener('deviceorientation', handleOrientation);
                 window.addEventListener('devicemotion', handleMotion);
                 requestPermissionButton.style.display = 'none';
-                updateDebugStatus('IMU 센서 권한 요청 불필요 (구형 iOS 또는 다른 브라우저).');
+                updateDebugStatus(cavemanOn ? '몸 감각 바로 됨 (권한 창 없음).' : 'IMU 센서 권한 요청 불필요 (구형 iOS 또는 다른 브라우저).');
             }
 
-            // 2. 실시간 GPS 위치 정보 요청
-            if (navigator.geolocation) { // 브라우저가 Geolocation을 지원하는지 확인
-                document.getElementById('gps-data').innerText = '위치 정보 요청 중...';
-                updateDebugStatus('GPS 위치 정보 요청 시작.');
+            if (navigator.geolocation) {
+                document.getElementById('gps-data').innerText = t().requestingGps;
+                updateDebugStatus(cavemanOn ? '하늘 눈 요청.' : 'GPS 위치 정보 요청 시작.');
                 watchId = navigator.geolocation.watchPosition(
                     handleGeolocationSuccess,
                     handleGeolocationError,
@@ -305,18 +767,28 @@
                     }
                 );
             } else {
-                document.getElementById('gps-data').innerText = '이 브라우저는 Geolocation을 지원하지 않습니다.';
-                updateDebugStatus('이 브라우저는 Geolocation을 지원하지 않습니다.');
+                document.getElementById('gps-data').innerText =
+                    cavemanOn ? '이 브라우저 하늘 눈 없음.' : '이 브라우저는 Geolocation을 지원하지 않습니다.';
+                updateDebugStatus(cavemanOn ? '이 브라우저 하늘 눈 없음.' : '이 브라우저는 Geolocation을 지원하지 않습니다.');
             }
+        }
+
+        requestPermissionButton.addEventListener('click', requestSensorsAndGps);
+        demoHuntButton.addEventListener('click', startDemoHunt);
+        cavemanToggle.addEventListener('click', function () {
+            setCavemanMode(!cavemanOn, false);
         });
 
-        // 페이지를 떠날 때 위치 추적 중지
-        window.addEventListener('beforeunload', function() {
+        window.addEventListener('beforeunload', function () {
             if (watchId) {
                 navigator.geolocation.clearWatch(watchId);
-                updateDebugStatus('페이지 종료: GPS 추적 중지됨.');
+                updateDebugStatus(cavemanOn ? '페이지 떠남. 하늘 눈 감음.' : '페이지 종료: GPS 추적 중지됨.');
             }
+            stopDemoHunt(false);
         });
+
+        setCavemanMode(cavemanOn, true);
+        updateHuntStats();
     </script>
 </body>
 </html>
